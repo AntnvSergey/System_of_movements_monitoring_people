@@ -33,30 +33,33 @@ def resized(image):
 
 
 if __name__ == '__main__':
-    # Читаем исходное изображение
-    im_src = cv2.imread('./images/img1.jpg')
-    # Уменьшаем изображение (тк. исходное слишком большого размера) и выделяем 4 точки
-    im_src_resized = resized(im_src)
-    pts_src = get_four_points(im_src_resized)
+
+    # Read in the image.
+    im_src = cv2.imread('./images/image1.jpg')
+
+    # Show image and wait for 4 clicks.
+    pts_src = get_four_points(im_src)
 
 
-    # Пока что руками задаю конечное положение выделеных точек
-    size = (300, 400)
+    # Destination coordinates
+    size = (500, 500)
     pts_dst = np.float32(
         [
-            [200, 200],
-            [size[0] - 1 + 200, 200],
-            [size[0] - 1 + 200, size[1] - 1 + 200],
-            [200, size[1] - 1 + 200]
+            [0, 0],
+            [size[0], 0],
+            [size[0], size[1]],
+            [0, size[1]]
         ]
     )
 
+
+    # Calculate the homography
     M = cv2.getPerspectiveTransform(pts_src, pts_dst)
-    # Деформируем исходное изображение
+    # Warp source image to destination
     im_out = cv2.warpPerspective(im_src, M, (im_src.shape[1], im_src.shape[0]))
     cv2.imwrite("im_out.jpg", im_out)
 
-    # Вывод результата на экран
+    # Show output
     im_out_resized = resized(im_out)
     cv2.imshow("Warped Source Image", im_out)
 

@@ -1,78 +1,55 @@
-# python image_stitching.py --images images/scottsdale --output output.png --crop 1
+# USAGE
+# python image_stitching_simple.py --images images/scottsdale --output output.png
+
+# import the necessary packages
 from imutils import paths
 import numpy as np
 import argparse
 import imutils
 import cv2
 
-# Аргументы командной строки
+
+modes = (cv.Stitcher_PANORAMA, cv.Stitcher_SCANS)
+
+# construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("-i", "--images", type=str, required=True,
 	help="path to input directory of images to stitch")
 ap.add_argument("-o", "--output", type=str, required=True,
 	help="path to the output image")
-ap.add_argument("-c", "--crop", type=int, default=0,
-	help="whether to crop out largest rectangular region")
+ap.add_argument('-m', "--mode",
+    type=int, choices=modes, default = cv2.Stitcher_PANORAMA,
+    help='Determines configuration of stitcher. The default is `PANORAMA` (%d), '
+     'mode suitable for creating photo panoramas. Option `SCANS` (%d) is suitable '
+     'for stitching materials under affine transformation, such as scans.' % modes)
 args = vars(ap.parse_args())
 
-# Инициализируем список изображений
+# grab the paths to the input images and initialize our images list
 print("[INFO] loading images...")
 imagePaths = sorted(list(paths.list_images(args["images"])))
 images = []
 
+# loop over the image paths, load each one, and add them to our
+# images to stich list
 for imagePath in imagePaths:
 	image = cv2.imread(imagePath)
 	images.append(image)
 
-# Инициализируем объект сшивания изображений OpenCV, а затем выполнить сшивание изображений
-print("[INFO] stitching images...")
-stitcher = cv2.createStitcher() if imutils.is_cv3() else cv2.Stitcher_create()
+# initialize OpenCV's image sticher object and then perform the image
+stitcher = cv2.Stitcher.create(args.mode)
 (status, stitched) = stitcher.stitch(images)
 
-# Если статус '0', то OpenCV успешно выполнил сшивание изображения
+# if the status is '0', then OpenCV successfully performed image
+# stitching
 if status == 0:
-	# Вырезаем ненужную часть
-	if args["crop"] > 0:
-		# Создаем 10-пиксельную рамку
-		print("[INFO] cropping...")
-		stitched = cv2.copyMakeBorder(stitched, 10, 10, 10, 10,
-			cv2.BORDER_CONSTANT, (0, 0, 0))
-
-		gray = cv2.cvtColor(stitched, cv2.COLOR_BGR2GRAY)
-		thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY)[1]
-
-		# Находим контуры
-		cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
-			cv2.CHAIN_APPROX_SIMPLE)
-		cnts = imutils.grab_contours(cnts)
-		c = max(cnts, key=cv2.contourArea)
-
-		mask = np.zeros(thresh.shape, dtype="uint8")
-		(x, y, w, h) = cv2.boundingRect(c)
-		cv2.rectangle(mask, (x, y), (x + w, y + h), 255, -1)
-
-		# Создаем 2 маску
-		minRect = mask.copy()
-		sub = mask.copy()
-
-		while cv2.countNonZero(sub) > 0:
-			minRect = cv2.erode(minRect, None)
-			sub = cv2.subtract(minRect, thresh)
-
-		cnts = cv2.findContours(minRect.copy(), cv2.RETR_EXTERNAL,
-			cv2.CHAIN_APPROX_SIMPLE)
-		cnts = imutils.grab_contours(cnts)
-		c = max(cnts, key=cv2.contourArea)
-		(x, y, w, h) = cv2.boundingRect(c)
-
-		stitched = stitched[y:y + h, x:x + w]
-
+	# write the output stitched image to disk
 	cv2.imwrite(args["output"], stitched)
 
-	# Вывод результата на экран
-	cv2.imshow("Stitched", stitched)
+	# display the output stitched image to our screen
+	# cv2.imshow("Stitched", stitched)
 	cv2.waitKey(0)
 
-# Вывод статуса сшивания при ошибке
+# otherwise the stitching failed, likely due to not enough keypoints)
+# being detected
 else:
 	print("[INFO] image stitching failed ({})".format(status))
