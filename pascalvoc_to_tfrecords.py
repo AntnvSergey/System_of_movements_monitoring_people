@@ -25,29 +25,30 @@ import cv2
 from object_detection.utils import dataset_util
 from object_detection.utils import label_map_util
 
-
 flags = tf.app.flags
 flags.DEFINE_string('image_dir', None, 'Path to image directory.')
 flags.DEFINE_string('annotations_dir', None, 'Path to annotations directory.')
 flags.DEFINE_string('output_path', None, 'Path to output TFRecord')
-flags.DEFINE_string('label_map_path', 'data/pascal_label_map.pbtxt', 'Path to label map proto')
+flags.DEFINE_string('label_map_path', 'label_map.pbtxt', 'Path to label map proto')
 flags.DEFINE_string('class_implications', None, 'JSON object literal mapping target classes to replacement classes')
 flags.DEFINE_string('class_priorities', None, 'JSON array literal that defines class priorities from the least specific (first) to the most specific (last)')
-flags.DEFINE_string('base_class', 'dog', 'Use a two-class model, converting additional classes by using built-in implication rules (only applies if the class_implications paramted is not provided)')
+flags.DEFINE_string('base_class', 'person', 'Use a two-class model, converting additional classes by using built-in implication rules (only applies if the class_implications paramted is not provided)')
 flags.DEFINE_string('target_class', None, 'Use a two-class model, converting additional classes by using built-in implication rules (only applies if the class_implications paramted is not provided)')
 flags.DEFINE_boolean('grayscale', False, 'Convert images to grayscale before packing into the TFRecord file')
 flags.DEFINE_boolean('clahe', False, 'Use the CLAHE algorithm to improve contrast (only applies if grayscale is enabled)')
 FLAGS = flags.FLAGS
 
-DEFAULT_CLASS_PRIORITIES = ['dog', 'dog-lying', 'dog-resting', 'dog-sleep']
+DEFAULT_CLASS_PRIORITIES = ['person']
 
 stats = {'impl_classes_replaced': 0, 'impl_images_replaced': 0}
 clahe = None
+
 
 def convertToJpeg(im):
     with io.BytesIO() as f:
         im.save(f, format='JPEG')
         return f.getvalue()
+
 
 def load_image__PIL(full_path):
     with tf.gfile.GFile(full_path, 'rb') as fid:
@@ -63,6 +64,7 @@ def load_image__PIL(full_path):
         encoded_jpg = convertToJpeg(image)
 
     return image, encoded_jpg
+
 
 def load_image__cv2(full_path):
     global clahe
@@ -84,6 +86,7 @@ def load_image__cv2(full_path):
         encoded_jpg = encoded_jpg.tobytes()
 
     return image, encoded_jpg
+
 
 def dict_to_tf_example(data, image_dir, label_map_dict, class_impl=None):
     """Convert XML derived dict to tf.Example proto.
@@ -159,6 +162,7 @@ def dict_to_tf_example(data, image_dir, label_map_dict, class_impl=None):
     }))
     return example
 
+
 def derive_implications(classes, class_1, class_2):
     prio = { label: index for index, label in enumerate(classes)}
 
@@ -178,6 +182,7 @@ def derive_implications(classes, class_1, class_2):
         elif curr_prio < class_2_prio and curr_prio != class_1_prio:
             impl[label] = class_1
     return impl
+
 
 def main(_):
     label_map_dict = label_map_util.get_label_map_dict(FLAGS.label_map_path)
@@ -220,7 +225,9 @@ def main(_):
 
     writer.close()
     if class_impl is not None:
-        print("Replaced {} classes in {} images with implied classes".format(stats['impl_classes_replaced'], stats['impl_images_replaced']))
+        print("Replaced {} classes in {} images with implied classes".format(stats['impl_classes_replaced'],
+                                                                             stats['impl_images_replaced']))
+
 
 if __name__ == '__main__':
     tf.app.run()
@@ -228,6 +235,6 @@ if __name__ == '__main__':
 
 # Import needed variables from tensorflow
 # From tensorflow/models/research/
-#protoc object_detection/protos/*.proto --python_out=.
-#export PYTHONPATH=$PYTHONPATH:`pwd`:`pwd`/slim
-#python object_detection/builders/model_builder_test.py
+# protoc object_detection/protos/*.proto --python_out=.
+# export PYTHONPATH=$PYTHONPATH:`pwd`:`pwd`/slim
+# python object_detection/builders/model_builder_test.py

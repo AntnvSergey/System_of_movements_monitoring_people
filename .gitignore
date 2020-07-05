@@ -1,3 +1,8 @@
 Python/**
 .DS_Store
 .idea
+mscoco
+VOCdevkit
+__pycache__
+data
+training
